@@ -1,4 +1,6 @@
-# LSTM modeling Basic
+#################################################################################################
+###################################### LSTM modeling Basic ######################################
+#################################################################################################
 
 import os
 import sys
@@ -20,8 +22,18 @@ import sklearn as sc
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Dropout
+from tensorflow.keras.layers import Dense, LSTM, Dropout, SimpleRNN, GRU
+from tensorflow.keras.optimizer import SGD
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_squared_log_error, r2_score
+
+
+'''
+LSTM과 GRU는 3차원 배열의 입력값을 사용하므로, 데이터를 3차원 형태로 재구성해주어야 한다.
+(sample, time steps, features)
+sample : time step으로 데이터를 묶었을 때, 재구성된 데이터의 수
+time step : 몇 time을 기준으로 시계열 분석을 할 것인지
+features : 데이터를 구성하는 feature가 몇개인지
+'''
 
 X = []
 y = []
@@ -38,6 +50,7 @@ for i in range(len(y) - window_size):
 	y_data.append(_y)
 
 # train, test 구분. validation set 구분도 해주면 좋다.
+# train_test_split을 진행하면서 자동으로 리스트에서 numpy array 형태로 반환된다.
 X_train, X_test, y_train, y_test = train_test_split(X_data, 			# data feature 정보
 													y_data,				# data label
 													test_size = 0.3,	# train set 과 test set 비율 설정
@@ -99,3 +112,22 @@ RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
 MSLE = mean_squared_log_error(y_test, y_pred)
 RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
 R2 = r2_score(y_test, y_pred)
+
+
+
+#################################################################################################
+###################################### GRU  modeling Basic ######################################
+#################################################################################################
+
+GRU_model = Sequential()
+GRU_model.add(GRU(units = 50,
+				  return_sequences = True,
+				  input_shape = (X_train.shape[1], 1),
+				  activation = 'tanh'
+				  )
+			)
+GRU_model.add(GRU(units = 50,
+				  activation = 'tanh'
+				  )
+			)
+GRU_model.add(Dense(units = 2))
