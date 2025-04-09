@@ -59,7 +59,7 @@ with pd.ExcelWriter(path) as writer:
 
 
 # ------------------------------------------------------------
-# dropna(subset = '')
+# dropna(subset = '', axis = , how = , inplace = )
 # NULL값이 있는 데이터를 삭제하고 싶을 때 사용하는 메서드
 # ------------------------------------------------------------
 data = {
@@ -72,7 +72,15 @@ data = {
 df = pd.DataFrame(data)
 
 # null값이 하나라도 있는 row는 모두 삭제
-df.dropna()
+df.dropna(axis = 0) # axis = 'rows'
+
+# null값이 포함되어 있는 column 모두 삭제
+df.dropna(axis = 1) # axis = 'columns'
+
+# how변수를 통해 'any', 'all' 선택 가능
+# any: null 값을 하나라도 포함하면 drop
+# all: 해당 row/column 값이 전부다 null이어야 drop
+df.dropna(axis = 0, how = 'any')
 
 # 특정 컬럼에 대해서 null 값을 포함한 데이터를 삭제
 df.dropna(subset = 'column_name')
@@ -378,4 +386,50 @@ series : {열 : Series, 열 : Series}
 split : { index : [ 행, 행 ], columns : [ 열, 열 ], data : [ 값, 값 ] }
 records : [ { 열 : 값 , 열 : 값 }, { 열 : 값, 열 : 값 } ]
 index : { 행 : {열 : 값, 열 : 값}, 행 : {열 : 값, 열 : 값} }
+'''
+
+
+# ------------------------------------------------------------
+# df.index.levels
+# df.index.names
+# df.index.get_level_values(level)
+# df.reset_index(level = )
+# df.sort_index(level = )
+# df.swaplevel(index1, index2)
+# df.drop_level()
+# ------------------------------------------------------------
+'''
+df에서 멀티 인덱스를 다룰 때 사용하는 개념
+여러 층의 인덱스에 대해서 내가 원하는 층에 접근하여 데이터를 다루기 위한 기능
+'''
+index = pd.MultiIndex.from_tuples([('A', 1), ('A', 2), ('B', 1), ('B', 2)], names=['letter', 'number'])
+df = pd.DataFrame({'value': [10, 20, 30, 40]}, index=index)
+
+print(df)
+'''
+               value
+letter number       
+A      1          10
+       2          20
+B      1          30
+       2          40
+'''
+
+print(df.index.levels)
+print(df.index.names)
+print(df.index.get_level_values(0))
+print(df.index.get_level_values('letter'))
+print(df.swaplevel('letter', 'number').sort_index(level = 'number'))
+# print(df.swaplevel(0, 1).sort_index(level = 'number'))
+'''
+[['A', 'B'], [1, 2]]
+['letter', 'number']
+Index(['A', 'A', 'B', 'B'], dtype='object', name='letter')
+Index(['A', 'A', 'B', 'B'], dtype='object', name='letter')
+               value
+number letter       
+1      A          10
+       B          30
+2      A          20
+       B          40
 '''
