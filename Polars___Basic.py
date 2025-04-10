@@ -277,6 +277,11 @@ pl_null_df.fill_null()
 pl_null_df.fill_null(pl.lit())
 pl_null_df.select(pl.col('*').fill_null())
 
+# strategy = 'forward', 'backward', 'min', 'max', 'mean', 'zero', 'one'
+# pl.median() - 중간 값으로 널 값을 채우는 방법
+# interpolate() - 보간법을 통해 널 값을 채우는 방법
+pl_null_df.fill_null(strategy = 'forward') # 앞의 값으로 채우기
+pl_null_df.fill_numm()
 
 
 # ------------------------------------------------------------
