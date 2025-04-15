@@ -207,6 +207,13 @@ print(pl_df.select(
 	)
 # 모두 동일한 결과가 나온다.
 
+# 한 개 컬럼만 추출할 경우 *시리즈와 데이터 프레임의 차이
+print(pl_df.select(pl.col('vendor_id'))) # (n, 1) 형태의 데이터 프레임 반환
+print(pl_df[['vendor_id']]) # (n, 1) 형태의 데이터 프레임 반환
+print(pl_df['vendor_id']) # (1, ) 형태의 시리즈 반환
+print(pl_df.select(pl.col('vendor_id')).to_series()) # to_series 메서드를 통해 시리즈 형태로 변환 가능
+
+
 # 모든 컬럼 선택 및 특정 컬럼 제외
 print(pl_df)
 print(pl_df.select('*'))
@@ -216,6 +223,7 @@ print(pl_df.select(pl.all()))
 print(pl_df.select(pl.col('*').exclude(['payment_type', 'total_amount'])))
 print(pl_df.select(pl.all().exclude('payment_type', 'total_amount'))) # 리스트로 감싸서 입력해도 되고, 그냥 나열해도 된다.
 print(pl_df.drop(['payment_type', 'total_amount']))
+
 
 # selector 활용하기
 import polars.selectors as cs
@@ -228,8 +236,23 @@ print(pl_df.select(pl.col(pl.Float64, pl.String)))
 print(pl_df.select(cs.float(), cs.string()))
 # 해당 데이터 타입을 가진 컬럼들만 선택
 
+
 # 정규표현식 사용 가능 - It should start with '^' and end with '$'
 print(pl_df.select(pl.col('^.*(amount|count)$')))
+
+
+# ------------------------------------------------------------
+# value 선택
+# 행이나 열 단위로 데이터를 처리하는 것이 아니라 특정 셀의 값을 추출하고 싶을 경우
+# ------------------------------------------------------------
+# vendor_id의 다섯 번째 값(index = 4)을 추출하고 싶은 경우라고 가정
+# 시리즈의 경우 원하는 값의 인덱스를 입력하면 된다.
+pl_seires = pl_df.select(pl.col('vendor_id')).to_series()
+sample_val = pl_series[4] # 해당 값의 인덱스 입력
+
+# 데이터 프레임의 경우 .item 메서드를 통해 원하는 좌표를 입력하면 된다.
+sample_val = pl_df.item(4, 0) # vendor_id = 0번째 컬럼 (row, column), 컬럼의 경우 컬럼명을 전달해도 된다.
+sample_val = pl_df.select(pl.col('vendor_id')).item(4, 0) # 이렇게 사용할 경우 컬럼의 경우 인덱스를 몰라도 된다.
 
 
 # ------------------------------------------------------------
@@ -273,22 +296,68 @@ shape: (5, 5)
 └───────────┴─────────────────┴───────────────┴──────────────┴──────────────┘
 '''
 
-pl_null_df.fill_null()
-pl_null_df.fill_null(pl.lit())
-pl_null_df.select(pl.col('*').fill_null())
+pl_null_df.fill_null() # 특정 값으로 널 값을 채우는 메서드. 입력한 값의 데이터 타입에 대응하는 컬럼의 값만 채운다.
+pl_null_df.fill_null(pl.lit()) # 각 컬럼에 맞는 데이터 타입으로 변형하여 널 값을 채운다.
+pl_null_df.select(pl.col('*').fill_null()) # 컬럼을 지정하고 fill_null을 할 경우 pl.lit()메서드의 기능이 저절로 적용된다.
+'''
+shape: (5, 5)
+┌───────────┬─────────────────┬───────────────┬──────────────┬──────────────┐
+│ vendor_id ┆ passenger_count ┆ trip_distance ┆ payment_type ┆ total_amount │
+│ ---       ┆ ---             ┆ ---           ┆ ---          ┆ ---          │
+│ str       ┆ i64             ┆ f64           ┆ str          ┆ f64          │
+╞═══════════╪═════════════════╪═══════════════╪══════════════╪══════════════╡
+│ A         ┆ 1               ┆ 0.95          ┆ card         ┆ 14.3         │
+│ A         ┆ 2               ┆ 1.2           ┆ card         ┆ 16.9         │
+│ B         ┆ 2               ┆ 2.0           ┆ null         ┆ 2.0          │
+│ null      ┆ 2               ┆ 2.9           ┆ null         ┆ 27.8         │
+│ B         ┆ 1               ┆ 1.53          ┆ card         ┆ 15.2         │
+└───────────┴─────────────────┴───────────────┴──────────────┴──────────────┘
+
+shape: (5, 5)
+┌───────────┬─────────────────┬───────────────┬──────────────┬──────────────┐
+│ vendor_id ┆ passenger_count ┆ trip_distance ┆ payment_type ┆ total_amount │
+│ ---       ┆ ---             ┆ ---           ┆ ---          ┆ ---          │
+│ str       ┆ i64             ┆ f64           ┆ str          ┆ f64          │
+╞═══════════╪═════════════════╪═══════════════╪══════════════╪══════════════╡
+│ A         ┆ 1               ┆ 0.95          ┆ card         ┆ 14.3         │
+│ A         ┆ 2               ┆ 1.2           ┆ card         ┆ 16.9         │
+│ B         ┆ 2               ┆ 2.0           ┆ 2            ┆ 2.0          │
+│ 2         ┆ 2               ┆ 2.9           ┆ 2            ┆ 27.8         │
+│ B         ┆ 1               ┆ 1.53          ┆ card         ┆ 15.2         │
+└───────────┴─────────────────┴───────────────┴──────────────┴──────────────┘
+'''
 
 # strategy = 'forward', 'backward', 'min', 'max', 'mean', 'zero', 'one'
 # pl.median() - 중간 값으로 널 값을 채우는 방법
 # interpolate() - 보간법을 통해 널 값을 채우는 방법
 pl_null_df.fill_null(strategy = 'forward') # 앞의 값으로 채우기
-pl_null_df.fill_numm()
+pl_null_df.with_columns(pl.col('trip_distance').fill_null(pl.median('trip_distance'))) # 중간 값으로 채우기
+pl_null_df.with_columns(pl.col(['trip_distance', 'total_amount']).fill_null(pl.median(['trip_distance', 'total_amount']))) # 한 번에 여러 컬럼에 대한 처리도 가능
+pl_null_df.with_columns(pl.col(['trip_distance', 'total_amount']).interpolate()) # 해당 컬럼에 대해서 보간법으로 null 값을 채운다.
 
 
 # ------------------------------------------------------------
 # 기본 연산
 # ------------------------------------------------------------
+pl_df.select(
+					(pl.col('passenger_count') +1).alias('with_driver'),
+					(pl.col('trip_distance') -1).alias('trip_distance -1'),
+					(pl.col('trip_distance') *1.60934).alias('trip_distance_km'),
+					((pl.col('total_amount')/pl.col('trip_distance')).alias('total_amount / trip_distance'))
+	)
+'''
+기본적인 연산은 pl.col()을 통해 계산 대상이 되는 컬럼을 지정한 후에 거기에 바로 연산을 진행하면 된다.
+그렇게 할 경우 해당 컬럼의 모든 값들에 대해서 차원 형태의 계산이 진행된다.
+컬럼과 컬럼 간의 연산도 동일하게 진행하면 된다.
+다만 유의해야 할 점은 컬럼 연산을 진행하게 되면 기본적으로는 먼저 선언한 컬럼의 값이 연산 결과로 바뀌게 된다.
+예를 들어 total_amount와 trip_distance 값을 더한다고 했을 때,
+pl.col('total_amount') + pl.col('trip_distance') 라고 코드를 작성할 경우 total_amount의 값이 계산 결과 값으로 바뀌게 된다.
+이를 방지하기 위해서는 .alias() 메서드를 통해 결과값을 저장할 컬럼명을 지정해주어야 한다.
+'''
 
+pl_df.select(
 
+	)
 
 
 # ------------------------------------------------------------
