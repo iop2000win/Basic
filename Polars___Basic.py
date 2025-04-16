@@ -423,10 +423,12 @@ shape: (5, 6)
 
 # ------------------------------------------------------------
 # df.filter()
-# 조건에 해당하는 데이터만 추출하는 메서드
-# pandas에서 .loc 메서드를 통해 여러 조건을 적용하던 것을 polars에서는 filter 메서드로 표현할 수 있다.
-# 조건 입력 방식은 위의 기본적인 연산 방법과 동일하게 pl.col() 메서드를 베이스로 작성하면 된다.
 # ------------------------------------------------------------
+'''
+조건에 해당하는 데이터만 추출하는 메서드
+pandas에서 .loc 메서드를 통해 여러 조건을 적용하던 것을 polars에서는 filter 메서드로 표현할 수 있다.
+조건 입력 방식은 위의 기본적인 연산 방법과 동일하게 pl.col() 메서드를 베이스로 작성하면 된다.
+'''
 pl_taxi_filtered = pl_taxi_df.filter(
 													(pl.col('tpep_pickup_datetime') >= datetime.datetime(2024, 12, 1))
 													& (pl.col('tpep_pickup_datetime') < datetime.datetime(2025, 1, 1))
@@ -439,14 +441,276 @@ tpep_pickup_datetime 값이 2024년 12월 1일 보다 크거나 같고, 2025년 
 # ------------------------------------------------------------
 # df.with_columns()
 # ------------------------------------------------------------
+'''
+polars를 쓰면서 select와 함께 기본적으로 가장 많이 사용할 메서드로 컬럼을 선택하거나, 추가할 때 사용하는 기능이다.
+select와 무슨 차이점이 있는가?
+select의 경우 선택한 컬럼의 데이터만을 읽어오는 기능이다.
+반면에 with_columns는 데이터 프레임을 구성하는 모든 컬럼들은 기본적으로 읽어들이며,
+여기에 추가적으로 컬럼을 추가하거나, 컬럼에 연산, 작업 등을 하고 싶을 때 사용하는 메서드이다.
 
+유의할 점은 위에서도 한 번 설명했던 내용인데,
+with_columns를 사용해서 컬럼에 연산을 진행했을 때도 alias 등을 이용해 컬럼명을 지정해주지 않을 경우
+새로운 컬럼이 생기는 것이 아니라 기존 컬럼의 값이 변경된다.
+기존 컬럼의 값을 바꾸고 싶을 때는 굳이 기존 컬럼에 덮어 씌울 필요없이 연산만 진행하면 된다.
+
+마찬가지로 결과 데이터프레임을 리턴하는 메서드로 결과값을 새로운 변수에 다시 할당해주어야 한다.
+'''
+print(pl_df.with_columns())
+print(pl_df.with_columns('*'))
+
+# 새 컬럼을 지정하는 방식
+print(pl_df.with_columns(
+									(pl.col('passenger_count')+1), # passenger_count 컬럼 자체의 값이 바뀐다.
+									(pl.col('passenger_count')).alias('passenger_count_org'), # 기존 값을 남기고 싶어서 _org 컬럼으로 기존 값을 새로 생성
+									(pl.col('passenger_count')+1).alias('passenger_count+1'), # +1한 값을 새로운 컬럼명으로 생성
+									passenger_count_plus_1 = (pl.col('passenger_count')+1) # 컬럼을 생성하는 다른 방식
+								)
+)
+
+'''
+shape: (5, 5)
+┌───────────┬─────────────────┬───────────────┬──────────────┬──────────────┐
+│ vendor_id ┆ passenger_count ┆ trip_distance ┆ payment_type ┆ total_amount │
+│ ---       ┆ ---             ┆ ---           ┆ ---          ┆ ---          │
+│ str       ┆ i64             ┆ f64           ┆ str          ┆ f64          │
+╞═══════════╪═════════════════╪═══════════════╪══════════════╪══════════════╡
+│ A         ┆ 1               ┆ 0.95          ┆ card         ┆ 14.3         │
+│ A         ┆ 1               ┆ 1.2           ┆ card         ┆ 16.9         │
+│ B         ┆ 2               ┆ 2.51          ┆ cash         ┆ 34.6         │
+│ B         ┆ 2               ┆ 2.9           ┆ cash         ┆ 27.8         │
+│ B         ┆ 1               ┆ 1.53          ┆ card         ┆ 15.2         │
+└───────────┴─────────────────┴───────────────┴──────────────┴──────────────┘
+
+shape: (5, 8)
+┌───────────┬────────────┬────────────┬────────────┬───────────┬───────────┬───────────┬───────────┐
+│ vendor_id ┆ passenger_ ┆ trip_dista ┆ payment_ty ┆ total_amo ┆ passenger ┆ passenger ┆ passenger │
+│ ---       ┆ count      ┆ nce        ┆ pe         ┆ unt       ┆ _count_or ┆ _count+1  ┆ _count_pl │
+│ str       ┆ ---        ┆ ---        ┆ ---        ┆ ---       ┆ g         ┆ ---       ┆ us_1      │
+│           ┆ i64        ┆ f64        ┆ str        ┆ f64       ┆ ---       ┆ i64       ┆ ---       │
+│           ┆            ┆            ┆            ┆           ┆ i64       ┆           ┆ i64       │
+╞═══════════╪════════════╪════════════╪════════════╪═══════════╪═══════════╪═══════════╪═══════════╡
+│ A         ┆ 2          ┆ 0.95       ┆ card       ┆ 14.3      ┆ 1         ┆ 2         ┆ 2         │
+│ A         ┆ 2          ┆ 1.2        ┆ card       ┆ 16.9      ┆ 1         ┆ 2         ┆ 2         │
+│ B         ┆ 3          ┆ 2.51       ┆ cash       ┆ 34.6      ┆ 2         ┆ 3         ┆ 3         │
+│ B         ┆ 3          ┆ 2.9        ┆ cash       ┆ 27.8      ┆ 2         ┆ 3         ┆ 3         │
+│ B         ┆ 2          ┆ 1.53       ┆ card       ┆ 15.2      ┆ 1         ┆ 2         ┆ 2         │
+└───────────┴────────────┴────────────┴────────────┴───────────┴───────────┴───────────┴───────────┘
+'''
 
 
 # ------------------------------------------------------------
 # join(merge)
+# how = 'inner', 'left', 'right', 'full', 'cross', 'semi', 'anti'
 # ------------------------------------------------------------
+'''
+pandas의 merge, sql의 join의 기능
+기본적인 방식 및 변수는 pandas와 동일하다.
+df_a.join(df_b, on = [col1], how = 'inner', coalesce = None/True/False)
+coalesce 변수의 경우 join에 사용된 컬럼에 대한 처리를 결정하는 변수이다.
 
+menu = pl.DataFrame(
+    {
+        "item": ["coffee", "latte", "ade", "cake", "bread", "chocolate"],
+        "type": ["beverage", "beverage", "beverage", "dessert", "dessert", "dessert"],
+        "price": [3000, 4000, 5000, 6000, 7500, 4500]
+    }
+)
+
+orders = pl.DataFrame(
+    {
+        "item": ["coffee", "ade", "coffee", "cake", "chocolate"],
+        "number_of_orders": [1, 3, 7, 2, 5]
+    }
+)
+
+shape: (6, 3)
+┌───────────┬──────────┬───────┐
+│ item      ┆ type     ┆ price │
+│ ---       ┆ ---      ┆ ---   │
+│ str       ┆ str      ┆ i64   │
+╞═══════════╪══════════╪═══════╡
+│ coffee    ┆ beverage ┆ 3000  │
+│ latte     ┆ beverage ┆ 4000  │
+│ ade       ┆ beverage ┆ 5000  │
+│ cake      ┆ dessert  ┆ 6000  │
+│ bread     ┆ dessert  ┆ 7500  │
+│ chocolate ┆ dessert  ┆ 4500  │
+└───────────┴──────────┴───────┘
+shape: (5, 2)
+┌───────────┬──────────────────┐
+│ item      ┆ number_of_orders │
+│ ---       ┆ ---              │
+│ str       ┆ i64              │
+╞═══════════╪══════════════════╡
+│ coffee    ┆ 1                │
+│ ade       ┆ 3                │
+│ coffee    ┆ 7                │
+│ cake      ┆ 2                │
+│ chocolate ┆ 5                │
+└───────────┴──────────────────┘
+'''
+
+print(menu.join(orders, on = ['item'], how = 'full', coalesce = True)) # join에 사용된 컬럼을 합쳐서 하나만 표시
+print(menu.join(orders, on = ['item'], how = 'right', coalesce = False)) # join에 사용된 컬럼을 구분해서 표시
+'''
+shape: (7, 5)
+┌───────────┬──────────┬───────┬────────────┬──────────────────┐
+│ item      ┆ type     ┆ price ┆ item_right ┆ number_of_orders │
+│ ---       ┆ ---      ┆ ---   ┆ ---        ┆ ---              │
+│ str       ┆ str      ┆ i64   ┆ str        ┆ i64              │
+╞═══════════╪══════════╪═══════╪════════════╪══════════════════╡
+│ coffee    ┆ beverage ┆ 3000  ┆ coffee     ┆ 1                │
+│ coffee    ┆ beverage ┆ 3000  ┆ coffee     ┆ 7                │
+│ latte     ┆ beverage ┆ 4000  ┆ null       ┆ null             │
+│ ade       ┆ beverage ┆ 5000  ┆ ade        ┆ 3                │
+│ cake      ┆ dessert  ┆ 6000  ┆ cake       ┆ 2                │
+│ bread     ┆ dessert  ┆ 7500  ┆ null       ┆ null             │
+│ chocolate ┆ dessert  ┆ 4500  ┆ chocolate  ┆ 5                │
+└───────────┴──────────┴───────┴────────────┴──────────────────┘
+
+shape: (5, 5)
+┌───────────┬──────────┬───────┬────────────┬──────────────────┐
+│ item      ┆ type     ┆ price ┆ item_right ┆ number_of_orders │
+│ ---       ┆ ---      ┆ ---   ┆ ---        ┆ ---              │
+│ str       ┆ str      ┆ i64   ┆ str        ┆ i64              │
+╞═══════════╪══════════╪═══════╪════════════╪══════════════════╡
+│ coffee    ┆ beverage ┆ 3000  ┆ coffee     ┆ 1                │
+│ ade       ┆ beverage ┆ 5000  ┆ ade        ┆ 3                │
+│ coffee    ┆ beverage ┆ 3000  ┆ coffee     ┆ 7                │
+│ cake      ┆ dessert  ┆ 6000  ┆ cake       ┆ 2                │
+│ chocolate ┆ dessert  ┆ 4500  ┆ chocolate  ┆ 5                │
+└───────────┴──────────┴───────┴────────────┴──────────────────┘
+
+coalesce 변수의 default 값은 None으로 join에 따라 다르게 나타난다.
+'''
+
+print(menu.join(orders, on = ['item'], how = 'semi'))
+print(menu.join(orders, on = ['item'], how = 'anti'))
+'''
+# semi 조인
+베이스 데이터(left)에 대해서 join 컬럼에 대해서 서브 데이터(right)에 존재하는 데이터만 추출하는 작업
+좀 더 이해가 쉽도록 표현하자면,
+menu.filter(pl.col('item').is_in(orders['item']))
+
+shape: (4, 3)
+┌───────────┬──────────┬───────┐
+│ item      ┆ type     ┆ price │
+│ ---       ┆ ---      ┆ ---   │
+│ str       ┆ str      ┆ i64   │
+╞═══════════╪══════════╪═══════╡
+│ coffee    ┆ beverage ┆ 3000  │
+│ ade       ┆ beverage ┆ 5000  │
+│ cake      ┆ dessert  ┆ 6000  │
+│ chocolate ┆ dessert  ┆ 4500  │
+└───────────┴──────────┴───────┘
+
+# anti 조인
+베이스 데이터에 대해서 join 컬럼에 대해서 서브 데이터에 존재하지 않는 데이터만 추출하는 작업
+menu.filter(~pl.col('item').is_in(orders['item']))
+
+shape: (2, 3)
+┌───────┬──────────┬───────┐
+│ item  ┆ type     ┆ price │
+│ ---   ┆ ---      ┆ ---   │
+│ str   ┆ str      ┆ i64   │
+╞═══════╪══════════╪═══════╡
+│ latte ┆ beverage ┆ 4000  │
+│ bread ┆ dessert  ┆ 7500  │
+└───────┴──────────┴───────┘
+'''
 
 # ------------------------------------------------------------
 # group_by
+# group_by 연산
+# count, n_unique, max, min, mean, median, quantile(n), sum
+# first, last - 각 그룹의 첫번째 값, 마지막 값 반환
+# head(n), tail(n) - 각 그룹의 첫 n개, 마지막 n개 반환
+# agg 메서드
+# ------------------------------------------------------------
+'''
+기본적인 사용법은 판다스와 동일하다.
+group_by() 메서드에 입력 값으로 그룹핑할 기준이 되는 컬럼을 입력하고,
+뒤이어 체이닝으로 원하는 연산을 작성하면 된다.
+
+그룹핑 연산을 진행할 경우, 모든 컬럼에 대해서 연산이 진행되며
+집계할 수 없는 컬럼에 대해서는 null값을 반환한다.
+따라서 원하는 값만 추출하기 위해서는 select를 통해서 원하는 컬럼 데이터만 선택한 후에
+그룹핑 연산을 진행하는 것이 더 효율적이다.
+'''
+print(menu.group_by('type').sum())
+print(menu.select('type', 'price').group_by('type').mean())
+print(menu.select('type', 'price').group_by('type').max())
+print(menu.select('type', 'price').group_by('type').head(3))
+'''
+shape: (2, 3)
+┌──────────┬──────┬───────┐
+│ type     ┆ item ┆ price │
+│ ---      ┆ ---  ┆ ---   │
+│ str      ┆ str  ┆ i64   │
+╞══════════╪══════╪═══════╡
+│ beverage ┆ null ┆ 12000 │
+│ dessert  ┆ null ┆ 18000 │
+└──────────┴──────┴───────┘
+
+shape: (2, 2)
+┌──────────┬────────┐
+│ type     ┆ price  │
+│ ---      ┆ ---    │
+│ str      ┆ f64    │
+╞══════════╪════════╡
+│ beverage ┆ 4000.0 │
+│ dessert  ┆ 6000.0 │
+└──────────┴────────┘
+
+shape: (2, 2)
+┌──────────┬───────┐
+│ type     ┆ price │
+│ ---      ┆ ---   │
+│ str      ┆ i64   │
+╞══════════╪═══════╡
+│ dessert  ┆ 7500  │
+│ beverage ┆ 5000  │
+└──────────┴───────┘
+
+shape: (6, 2)
+┌──────────┬───────┐
+│ type     ┆ price │
+│ ---      ┆ ---   │
+│ str      ┆ i64   │
+╞══════════╪═══════╡
+│ dessert  ┆ 6000  │
+│ dessert  ┆ 7500  │
+│ dessert  ┆ 4500  │
+│ beverage ┆ 3000  │
+│ beverage ┆ 4000  │
+│ beverage ┆ 5000  │
+└──────────┴───────┘
+'''
+
+'''
+agg 메서드를 활용할 경우 따로 사용할 데이터 컬럼을 select하는 과정이 필요 없다.
+group_by에 사용된 컬럼과 agg 메서드에서 집계 연산하여 만든 컬럼들만 리턴되게 된다.
+*join에 이어서 체이닝 연산으로 그룹핑 연산을 진행할 수 있다.
+'''
+menu.join(orders, on = ['item'], how = 'left').group_by(['type']).agg(
+																								pl.col('number_of_orders').fill_null(0).sum().alias('total_orders'),
+																								mean_orders = pl.col('number_of_orders').fill_null(0).mean()
+																								# agg를 통해 컬럼을 생성하는 두가지 방법
+	)
+'''
+shape: (2, 3)
+┌──────────┬──────────────┬─────────────┐
+│ type     ┆ total_orders ┆ mean_orders │
+│ ---      ┆ ---          ┆ ---         │
+│ str      ┆ i64          ┆ f64         │
+╞══════════╪══════════════╪═════════════╡
+│ beverage ┆ 11           ┆ 2.75        │
+│ dessert  ┆ 7            ┆ 2.333333    │
+└──────────┴──────────────┴─────────────┘
+'''
+
+
+# ------------------------------------------------------------
+# df.shift()
+# pl.col().diff()
 # ------------------------------------------------------------
