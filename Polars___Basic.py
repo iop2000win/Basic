@@ -68,7 +68,7 @@ import pandas as pd
 # ------------------------------------------------------------
 # make and read data
 #
-# pl.DataFrame([value_list1, value_list2, ..., value_listN], schema = , orient = )
+# pl.DataFrame([value_list1, value_list2, ..., value_listN], schema = , orient = (default = None(col based)))
 # pl.DataFrame({col_name: value_list, col_name: value_list, ...}, schema = )
 # pl.read_csv()
 # pl.read_excel()
@@ -90,7 +90,10 @@ trip_distance = [0.95, 1.2, 2.51, 2.9, 1.53]
 payment_type = ['card', 'card', 'cash', 'cash', 'card']
 total_amount = [14.3, 16.9, 34.6, 27.8, 15.2]
 
-pl_df = pl.DataFrame([vendor_id, passenger_count, trip_distance, payment_type, total_amount])
+pl_df = pl.DataFrame([vendor_id, passenger_count, trip_distance, payment_type, total_amount]) # orient = 'col' 결과와 동일
+pl_df_row = pl.DataFrame([vendor_id, passenger_count, trip_distance, payment_type, total_amount], orient = 'row')
+print(pl_df)
+print(pl_df_row)
 '''
 shape: (5, 5)
 ┌──────────┬──────────┬──────────┬──────────┬──────────┐
@@ -711,6 +714,45 @@ shape: (2, 3)
 
 
 # ------------------------------------------------------------
-# df.shift()
+# df.shift(n, fill_value)
 # pl.col().diff()
 # ------------------------------------------------------------
+'''
+데이터를 shift하는 기능
+n값을 따로 입력하지 않을 경우 기본적으로 다음 행으로 1칸 이동된다.
+음수 값을 입력할 경우 반대 방향으로 이동된다.
+데이터프레임 자체에 메서드를 적용할 경우 데이터 프레임 전체 행이 이동되며,
+특정 컬럼에 대해서만 진행하고 싶을 경우 해당 컬럼에 대해서 메서드를 적용하면 된다.
+원 컬럼을 유지하고 shift한 컬럼을 새로 추가하고 싶은 경우는
+마찬가지로 with_columns 메서드를 활용하면 된다.
+
+fill_value 변수를 이용하면, shift 후에 값이 없는 셀에 대해서 해당 값으로 채울 수 있다.
+
+외에도 정말로 많은 기능들이 존재하지만 shift를 이용하는 것중에 가장 대표적인 목적인
+이전 셀과의 차이를 계산하는 것은 따로 shift를 거치지 않아도 .diff() 메서드를 통해 계산이 가능하다.
+'''
+
+pl_df_shift = pl_df.with_columns(
+											pl.col('total_amount').shift(1, fill_value = -999).alias('total_amount_shift_fill'),
+											pl.col('total_amount').shift(1).alias('total_amount_shift')
+										).select(
+													pl.col(['total_amount', 'total_amount_shift_fill', 'total_amount_shift']),
+													(pl.col('total_amount') - pl.col('total_amount_shift')).alias('shift_diff'),
+													pl.col('total_amount').diff(1).alias('diff_method')
+										)
+print(pl_df_shift)
+'''
+shape: (5, 5)
+┌──────────────┬─────────────────────────┬────────────────────┬────────────┬─────────────┐
+│ total_amount ┆ total_amount_shift_fill ┆ total_amount_shift ┆ shift_diff ┆ diff_method │
+│ ---          ┆ ---                     ┆ ---                ┆ ---        ┆ ---         │
+│ f64          ┆ f64                     ┆ f64                ┆ f64        ┆ f64         │
+╞══════════════╪═════════════════════════╪════════════════════╪════════════╪═════════════╡
+│ 14.3         ┆ -999.0                  ┆ null               ┆ null       ┆ null        │
+│ 16.9         ┆ 14.3                    ┆ 14.3               ┆ 2.6        ┆ 2.6         │
+│ 34.6         ┆ 16.9                    ┆ 16.9               ┆ 17.7       ┆ 17.7        │
+│ 27.8         ┆ 34.6                    ┆ 34.6               ┆ -6.8       ┆ -6.8        │
+│ 15.2         ┆ 27.8                    ┆ 27.8               ┆ -12.6      ┆ -12.6       │
+└──────────────┴─────────────────────────┴────────────────────┴────────────┴─────────────┘
+diff 메서드를 활용한 결과와 shift후에 연산을 진행한 결과를 비교해보자.
+'''
